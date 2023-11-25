@@ -1,2 +1,3 @@
-# Shared-Tabs-Site
-share all open or current tab to website to access it from anywhere .. requires extention sharetabs.zip which is in public folder.extract and load as unpacked
+# ShareTabs
+
+With Share tabs effortlessly share tabs(urls) using user-friendly platform. Use browser extension available for Chrome for simplifying tab-sharing with just one click. Additionaly without extension you can share tabs seamlessely.
