@@ -259,24 +259,6 @@ app.post('/add', async(req, res) => {
   
   res.redirect(307, '/urls');
 
-  //   let { urls } = req.body;
-
-// let allurls = urls.split(' ');
-
-// fetch('http://localhost:8000/urls', {
-//   method: 'POST',
-//   headers: { 'Content-Type': 'application/json' },
-//   body: JSON.stringify({urls:allurls})
-// })
-//   .then(response => response.json())
-//   .then(data => {
-//     res.redirect('/');
-//   })
-//   .catch(error => {
-   
-//     res.status(500).send('Failed to add urls');
-//   });
-
 });
 
 app.get('/getextension', async(req, res) => {
