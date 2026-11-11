@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "Share Tabs",
+  "description": "Share tabs or URLs to any device with ease",
+  "version": "1.0.6",
+  "permissions": [
+    "storage",
+    "tabs",
+    "activeTab"
+  ],
+  "optional_host_permissions": [
+    "http://*/*",
+    "https://*/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "icons": {
+    "64": "64.png"
+  },
+  "action": {
+    "default_title": "Share Tabs",
+    "default_popup": "popup.html"
+  }
+}

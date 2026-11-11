@@ -42,17 +42,17 @@ ShareTabs is a web dashboard for collecting and sharing browser tabs. Save links
 
 ## Browser extension
 
-The same Manifest V3 package supports Chrome 121+ and Firefox 121+. Download it from the app's `/getextension` page or from [`public/sharetabs.zip`](./public/sharetabs.zip).
+Download the browser-specific Manifest V3 package from the app's `/getextension` page. Chrome uses [`public/sharetabs.zip`](./public/sharetabs.zip), and Firefox uses [`public/sharetabs-firefox.zip`](./public/sharetabs-firefox.zip); their background-script formats differ.
 
 ### Chrome and Chromium browsers
 
-1. Download and extract the ZIP.
+1. Download and extract the Chrome ZIP.
 2. Open `chrome://extensions` (or `edge://extensions`) and enable Developer mode.
 3. Choose **Load unpacked** and select the extracted folder containing `manifest.json`.
 
 ### Firefox
 
-1. Download and extract the same ZIP.
+1. Download and extract the Firefox ZIP.
 2. Open `about:debugging#/runtime/this-firefox`.
 3. Select **Load Temporary Add-on** and choose `manifest.json` from the extracted folder.
 
@@ -60,7 +60,7 @@ Firefox temporary add-ons are removed when the browser closes. Permanent Firefox
 
 ### Extension authentication
 
-Set `USERNAME` and `PASSWORD` in the server environment. The extension asks for these credentials when sending tabs, and the server verifies them before saving. Credentials are not bundled in the extension and are not stored by it. Use HTTPS when connecting to a deployed server, and do not commit your `.env` file.
+Set `USERNAME` and `PASSWORD` in the server environment. On first use, the extension asks for the dashboard domain and these credentials, then saves them locally in the browser only after a successful send. It requests access to the selected domain when sending. Use HTTPS when connecting to a deployed server, and do not commit your `.env` file. Use **Log out** in the extension to clear the saved domain and credentials.
 
 Manual URL submissions from the dashboard keep their existing behavior and do not use the extension credentials.
 
