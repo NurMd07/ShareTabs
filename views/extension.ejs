@@ -1,78 +1,235 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Get Extension - Share Tabs</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
-<style>
-    a{
-       color:rgb(23, 220, 247)
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Get Extension - Share Tabs</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous" />
+  <style>
+    :root {
+      --bg-1: #07111f;
+      --bg-2: #0f172a;
+      --card: rgba(15, 23, 42, 0.7);
+      --border: rgba(148, 163, 184, 0.22);
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --primary: #60a5fa;
+      --success: #34d399;
     }
-    a:hover{
-        color:yellow
-    }
-    button{
-        border-radius: 0px !important;
-    }
-    .gradient-text {
-  background:conic-gradient(#2D2D2D, #4D4D4D, #6D6D6D, #ADADAD,#2D2D2D, #4D4D4D, #6D6D6D, #8D8D8D, #ADADAD);;
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  cursor: pointer;
-}
-.gradient-text:hover{
-  background:conic-gradient(#ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000,#ff0000, #ffff00, #ff00ff, #ff0000);
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
 
-}
-.info{
-    cursor: pointer;
-}
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: radial-gradient(circle at top, rgba(96, 165, 250, 0.15), transparent 30%), linear-gradient(135deg, var(--bg-1), var(--bg-2));
+      color: var(--text);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
 
-@media only screen and (max-width: 600px) {
-  h4{
- display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-}
-.download{
-margin-top: 1em;
-}
-}
-</style>
+    .panel {
+      width: min(900px, calc(100% - 32px));
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      box-shadow: 0 24px 60px rgba(15, 23, 42, 0.35);
+      padding: 32px 28px;
+      backdrop-filter: blur(18px);
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 18px;
+    }
+
+    .title {
+      margin: 0;
+      font-weight: 700;
+      font-size: clamp(1.7rem, 3vw, 2.4rem);
+      background: linear-gradient(135deg, #dbeafe, #93c5fd 40%, #34d399 100%);
+      background-clip: text;
+      -webkit-background-clip: text;
+      color: transparent;
+    }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 0.9rem;
+      font-weight: 600;
+      transition: color 0.2s ease;
+    }
+
+    .back-link:hover {
+      color: #bae6fd;
+    }
+
+    .download-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      min-height: 48px;
+      border: none;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--primary), #3b82f6);
+      color: white;
+      padding: 0 18px;
+      font-weight: 700;
+      box-shadow: 0 16px 30px rgba(59, 130, 246, 0.24);
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .download-btn:hover {
+      color: white;
+      filter: brightness(1.08);
+    }
+
+    .download-group {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+    }
+
+    .compatibility-note {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.76rem;
+    }
+
+    .info {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      margin-top: 22px;
+    }
+
+    .platform-card {
+      padding: 22px 20px;
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      color: var(--text);
+    }
+
+    .platform-card h2 {
+      margin: 0 0 14px;
+      color: var(--text);
+      font-size: 1.15rem;
+      font-weight: 700;
+    }
+
+    .platform-card p {
+      margin: 0 0 12px;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .platform-card strong {
+      color: var(--text);
+    }
+
+    a {
+      color: #7dd3fc;
+      text-decoration: none;
+    }
+
+    a:hover {
+      color: #bae6fd;
+    }
+
+    @media (max-width: 640px) {
+      body {
+        align-items: flex-start;
+        padding: 16px 0;
+      }
+
+      .header {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        align-items: start;
+        gap: 18px;
+      }
+
+      .panel {
+        padding: 22px 18px;
+      }
+
+      .download-btn {
+        width: 100%;
+      }
+
+      .download-group {
+        align-items: stretch;
+      }
+
+      .compatibility-note {
+        text-align: center;
+      }
+
+      .info {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .platform-card {
+        padding: 20px 16px;
+        overflow-wrap: anywhere;
+      }
+    }
+  </style>
 </head>
-<body class="container">
- <div class="row mt-5">
-    <div class="col-12 d-flex flex-column justify-content-center align-items-center">
-        <h4><span class="gradient-text">Get Share Tabs - Extension </span><button class="btn btn-primary ms-3 download">Download <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-download mb-1" viewBox="0 0 16 16">
+<body>
+  <div class="panel">
+    <div class="header">
+      <div>
+        <h1 class="title">Extension setup</h1>
+        <a class="back-link" href="/">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
+            <path fill-rule="evenodd" d="M15 8a.5.5 0 0 1-.5.5H2.707l3.147 3.146a.5.5 0 0 1-.708.708l-4-4a.5.5 0 0 1 0-.708l4-4a.5.5 0 1 1 .708.708L2.707 7.5H14.5A.5.5 0 0 1 15 8z"/>
+          </svg>
+          Back to tabs
+        </a>
+      </div>
+      <div class="download-group">
+        <a class="download-btn" href="/sharetabs.zip" download>
+          Download for Chrome &amp; Firefox
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
             <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
             <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
-          </svg></button> </h4>
-        <div class="info mt-5 bg-secondary p-5 text-light mb-3">
-            <p class="lead">Steps on How to install:</p>
-            <p>1.Download <b>sharetabs.zip </b>Extension file.</p>
-            <p>2.Go to <b> Extensions->manage extensions </b> in browser from <b>options menu</b></p>
-            <p>3.<b>Enable developer</b> option from extension menu</p>
-            <p>4.Go to folder in which extension <b> sharetabs.zip </b> has been downloaded.e.g. Download folder</p>
-            <p>5. <b>Extract it </b>. Download <a href="https://www.rarlab.com/download.htm" target="_blank">winrar</a> for pc or<a href="https://play.google.com/store/apps/details?id=ru.zdevs.zarchiver&pli=1" target="_blank"> Zarchiver app </a>for android to extract file.</p>
-            <p>6.Click on <b>load unpacked</b> and select the extracted folder.e.g folder name Sharetabs *select lowermost folder which contains files.</p>
-            <p>7. thats it now you can use extension by clicking from <b>extension menu.</b> Enjoy! </p>
-        </div>
+          </svg>
+        </a>
+        <p class="compatibility-note">One package for Chrome 121+ and Firefox 121+</p>
+      </div>
     </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
- 
-  <script>
-    let download = document.querySelector('.download');
-    download.addEventListener('click',()=>{
-        window.open('/sharetabs.zip', '_self');
-    })
-  </script>
+    <div class="info">
+      <section class="platform-card">
+        <h2>Chrome and Chromium browsers</h2>
+        <p>1. Download and extract the ZIP file.</p>
+        <p>2. Open <strong>chrome://extensions</strong> (or <strong>edge://extensions</strong>) and enable Developer mode.</p>
+        <p>3. Select <strong>Load unpacked</strong> and choose the extracted extension folder containing <strong>manifest.json</strong>.</p>
+      </section>
+
+      <section class="platform-card">
+        <h2>Firefox</h2>
+        <p>1. Download and extract the same ZIP file.</p>
+        <p>2. Open <strong>about:debugging#/runtime/this-firefox</strong> and select <strong>Load Temporary Add-on</strong>.</p>
+        <p>3. Choose <strong>manifest.json</strong> inside the extracted folder.</p>
+        <p><strong>Note:</strong> Temporary add-ons are removed when Firefox closes. Permanent installation requires a signed add-on.</p>
+      </section>
+    </div>
+  </div>
+
 </body>
 </html>

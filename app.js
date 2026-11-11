@@ -1,47 +1,115 @@
 const express = require('express');
-const app = express();
 const mongoose = require('mongoose');
 const cors = require('cors');
-const path = require("path");
-require('dotenv').config();
+const path = require('path');
 const cheerio = require('cheerio');
+require('dotenv').config();
+
 const Tab = require('./models/tabs');
+const validateExtensionAuthorization = require('./utils/extension-auth');
 
-
-let env = process.env.ENV || 'development';
-
-let PORT = env==='development'?8000:9004;
-
+const app = express();
+const env = process.env.ENV || 'development';
+const PORT = Number(process.env.PORT) || (env === 'development' ? 8000 : 9004);
 
 app.disable('x-powered-by');
 
-mongoose.set("strictQuery",false);
-mongoose.connect(process.env.MONGO_URI,{dbName:'tabs'})
-.then(()=>{
-  
-app.listen(PORT, () => {
-  console.log(`Environment : ${env}`);
-  console.log(`Port : ${PORT}`);
-  console.log('connected to db')
-  console.log('server is started')
-  });  
-})
-.catch((err)=>{console.log('error connecting to db')});
+mongoose.set('strictQuery', false);
 
-app.use(cors());
+const normalizeUrl = (value) => {
+  if (typeof value !== 'string') return null;
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname, "public")));
-app.set("view engine", "ejs");
+  const trimmed = value.trim();
+  if (!trimmed) return null;
 
+  const hasProtocol = /^https?:\/\//i.test(trimmed);
+  const normalized = hasProtocol ? trimmed : `https://${trimmed}`;
 
-app.get('/', async(req, res) => {
+  try {
+    const parsed = new URL(normalized);
+    if (!['http:', 'https:'].includes(parsed.protocol)) return null;
+    return parsed.toString().replace(/\/$/, '');
+  } catch (error) {
+    return null;
+  }
+};
 
+const resolveFaviconUrl = (baseUrl, faviconPath) => {
+  if (!faviconPath) return '/no-favicon.png';
 
-let allTabs = await Tab.find({}).sort({pin:-1,createdAt:-1});
+  if (/^https?:\/\//i.test(faviconPath)) {
+    return faviconPath;
+  }
 
-let modtabs = allTabs.map(tab => {  
+  if (faviconPath.startsWith('//')) {
+    return `https:${faviconPath}`;
+  }
+
+  if (faviconPath.startsWith('/')) {
+    return new URL(faviconPath, baseUrl).toString();
+  }
+
+  return new URL(faviconPath, baseUrl).toString();
+};
+
+const extractMetadata = async (inputUrl) => {
+  const url = normalizeUrl(inputUrl);
+  if (!url) return null;
+
+  const html = await fetch(url, {
+    headers: { 'User-Agent': 'ShareTabs/1.1 (+https://github.com/NurMd07/shareTabs)' },
+    signal: AbortSignal.timeout(10000)
+  }).then((response) => response.text()).catch(() => '');
+
+  if (!html) {
+    return {
+      title: new URL(url).hostname,
+      url,
+      icon: '/no-favicon.png'
+    };
+  }
+
+  const $ = cheerio.load(html);
+  const description =
+    $('meta[name="description"]').attr('content') ||
+    $('meta[property="og:description"]').attr('content') ||
+    $('meta[name="twitter:description"]').attr('content') ||
+    '';
+
+  const title =
+    $('meta[property="og:title"]').attr('content') ||
+    $('meta[name="title"]').attr('content') ||
+    $('title').first().text() ||
+    new URL(url).hostname;
+
+  let icon =
+    $('link[rel="icon"]').attr('href') ||
+    $('link[rel="shortcut icon"]').attr('href') ||
+    $('link[rel="apple-touch-icon"]').attr('href');
+
+  if (!icon) {
+    try {
+      const faviconResponse = await fetch(new URL('/favicon.ico', url).toString(), {
+        headers: { 'User-Agent': 'ShareTabs/1.1 (+https://github.com/NurMd07/shareTabs)' },
+        signal: AbortSignal.timeout(7000)
+      });
+      icon = faviconResponse.ok ? new URL('/favicon.ico', url).toString() : null;
+    } catch (error) {
+      icon = null;
+    }
+  }
+
+  const cleanTitle = title.trim();
+  const finalTitle = cleanTitle || description || new URL(url).hostname;
+
+  return {
+    title: finalTitle,
+    url,
+    icon: icon ? resolveFaviconUrl(url, icon) : '/no-favicon.png'
+  };
+};
+
+const formatDate = (dateValue) => {
   const options = {
     timeZone: 'Asia/Kolkata',
     hour: 'numeric',
@@ -50,217 +118,176 @@ let modtabs = allTabs.map(tab => {
     month: 'short',
     year: 'numeric'
   };
-  
-  const date = new Date(`${tab.createdAt}`).toLocaleString('en-US', options);
 
- 
-let parts = date.split(',');
-let [month,day] = parts[0].split(' ');
-let year = parts[1].trim();
-let time = parts[2].trim();
+  const date = new Date(dateValue).toLocaleString('en-US', options);
+  const [datePart, timePart] = date.split(', ');
+  const [month, day] = datePart.split(' ');
 
+  return `${day} ${month} ${timePart}`;
+};
 
- 
-  localDate = `${day} ${month} ${time}`;
-  let newtab = {
-    title:tab.title,
-    url:tab.url,
-    icon:tab.icon,
-    createdAt:localDate,
-    id:tab._id,
-    pin:tab.pin
+const parseIncomingUrls = (payload) => {
+  if (!payload || Object.keys(payload).length === 0) return { urls: [], fromMainPage: false };
+
+  if (Array.isArray(payload.urls)) {
+    return {
+      urls: payload.urls.filter((entry) => typeof entry === 'string').map((entry) => entry.trim()).filter(Boolean),
+      fromMainPage: false
+    };
   }
-  return newtab;
- })
 
+  if (typeof payload.urls === 'string') {
+    return {
+      urls: payload.urls.split(/[\s,]+/).map((item) => item.trim()).filter(Boolean),
+      fromMainPage: true
+    };
+  }
 
+  return { urls: [], fromMainPage: true };
+};
 
+mongoose.connect(process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/tabs', { dbName: 'tabs' })
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`Environment: ${env}`);
+      console.log(`Port: ${PORT}`);
+      console.log('Connected to MongoDB');
+      console.log('Server started');
+    });
+  })
+  .catch((error) => {
+    console.error('Error connecting to MongoDB:', error.message);
+    process.exit(1);
+  });
 
- res.render('home',{tabs:modtabs});
+app.use(cors());
+app.use(express.json({ limit: '2mb' }));
+app.use(express.urlencoded({ extended: true, limit: '2mb' }));
+app.use(express.static(path.join(__dirname, 'public')));
+app.set('view engine', 'ejs');
 
+app.get('/', async (req, res) => {
+  try {
+    const allTabs = await Tab.find({}).sort({ pin: -1, createdAt: -1 });
+    const tabs = allTabs.map((tab) => ({
+      title: tab.title,
+      url: tab.url,
+      icon: tab.icon || '/no-favicon.png',
+      createdAt: formatDate(tab.createdAt),
+      id: tab._id,
+      pin: Boolean(tab.pin)
+    }));
 
+    res.render('home', { tabs });
+  } catch (error) {
+    console.error('Failed to load tabs:', error);
+    res.status(500).render('home', { tabs: [] });
+  }
 });
 
-app.post('/urls',async(req, res) => {
-console.log(req.body)
-  let urls = req.body.urls;
-  let fromMainPage = false;
-    if (Object.keys(req.body).length === 0) {
-        res.status(400).json('error');
-      } else {
-        
-        if(Array.isArray(req.body.urls)){
+app.post('/urls', async (req, res) => {
+  if (req.body && Array.isArray(req.body.urls)) {
+    const authResult = validateExtensionAuthorization(
+      req.get('authorization'),
+      process.env.USERNAME,
+      process.env.PASSWORD
+    );
 
-          if(req.body.urls.length == 0){
-            return res.send('no input provided')
-          }
+    if (authResult === 'unavailable') {
+      return res.status(503).json({ message: 'Extension authentication is not configured' });
+    }
 
-        }else{
+    if (authResult === 'unauthorized') {
+      return res.status(401).json({ message: 'Invalid extension credentials' });
+    }
+  }
 
-          if(typeof req.body.urls   == 'string'){
+  const { urls, fromMainPage } = parseIncomingUrls(req.body);
 
-            urls = req.body.urls.split(' ');
-             fromMainPage = true;
-          }else{
+  if (!urls.length) {
+    if (fromMainPage) {
+      return res.redirect('/');
+    }
 
-            fromMainPage = true;
-            return res.send('no input provided')
+    return res.status(400).json({ message: 'No URL provided' });
+  }
 
-          }
+  const savedUrls = [];
+  const errors = [];
 
-        }
-      
-     
-   
-let errors = 0;
-        const promises = urls.map(async(url) => {
-          // code to fetch page details and save to database
-       
-         
-          let baseUrl;
-        if (url && url.trim() !== "") {
-      const hasHttp = url.includes('http://');
-  const hasHttps = url.includes('https://');
-  
-  if (!hasHttp && !hasHttps) {
-   url = 'http://' + url;
-  } 
-     try{   const parsedUrl = new URL(url);
-        
-            baseUrl = parsedUrl.origin;
-     }catch(error){
-      return
-     }
-          } else {
-            baseUrl = url;
-          }
-     
-    
-         
-          await fetch(`${baseUrl}`)
-          .then((result)=>{
-             return result.text()
-          })
-          .then(async(html) => {
-                const $ = cheerio.load(html);
-              
-             let title,description;
-             await fetch(`${url}`)
-                .then((result)=>{
-                   return result.text()
-                })
-                .then(html1 => {
-                  const $1 = cheerio.load(html1);
-                 
-                   title = $1('meta[property="og:title"]').attr('content') || $1('title').text() || $1('meta[name="title"]').attr('content')
-                  description = $1('meta[name="description"]').attr('content') || $1('meta[property="og:description"]').attr('content') || $1('meta[name="twitter:description"]').attr('content') || '';
-              
-                if(title.trim().length<=20){
-title = title + ' - ' + `<small>${description.slice(0,100)}</small>`;
-                }
-                }).catch(error => {
-                  title = $('meta[property="og:title"]').attr('content') || $('title').text() || $('meta[name="title"]').attr('content')
-                  description = $('meta[name="description"]').attr('content') || $('meta[property="og:description"]').attr('content') || $('meta[name="twitter:description"]').attr('content') || '';
-              
-                })
-            
-                   if(!title){
-                title = description;
+  for (const entry of urls) {
+    const url = normalizeUrl(entry);
+    if (!url) {
+      errors.push(entry);
+      continue;
+    }
 
-              }
-              if(!description){
-
-                title = url ;
-              }
-
-
-
-              
-               let icon = $('link[rel="icon"]').attr('href') || $('link[rel="shortcut icon"]').attr('href')
-               if(icon){ 
-                
-               if(icon.startsWith('/')){
-                
-                icon = `${baseUrl}${icon}`
-           
-              }
-            }else{
-              
-          await fetch(`${baseUrl}/favicon.ico`).then((result)=>{
-            
-if(result.status===200 || result.status===403  ){
-  icon = `${baseUrl}/favicon.ico`
-  
-}else{
-  icon = `/no-favicon.png`
- 
-}
-          }).catch(error => {
-            icon = `/no-favicon.png`
-          })
-              
-            }
- let tab = new Tab({title:title,url:url,icon:icon});
-await tab.save();
-
-
-          }).catch(error => {
-           
-              errors++;
-              
-          })
-
-
-        });
-        
-        Promise.allSettled(promises)
-          .then(() => {
-          
-            if(errors>=urls.length/2){
-              if(fromMainPage){
-                res.redirect('/')
-              }else{
-              res.status(500).json('error');
-              }
-            }else{
-              if(fromMainPage){
-                res.redirect('/')
-              }else{
-            res.json('success')}
-              }
-          }
-            )
-          .catch((error) => res.status(500).json(error));
-
+    try {
+      const existingTab = await Tab.findOne({ url });
+      if (existingTab) {
+        savedUrls.push(existingTab._id);
+        continue;
       }
 
+      const metadata = await extractMetadata(url);
+      if (!metadata) {
+        errors.push(entry);
+        continue;
+      }
+
+      const tab = new Tab({
+        title: metadata.title,
+        url: metadata.url,
+        icon: metadata.icon
+      });
+
+      await tab.save();
+      savedUrls.push(tab._id);
+    } catch (error) {
+      console.error(`Failed to save URL ${url}:`, error.message);
+      errors.push(entry);
+    }
+  }
+
+  if (fromMainPage) {
+    return res.redirect('/');
+  }
+
+  if (errors.length && savedUrls.length === 0) {
+    return res.status(500).json({ message: 'Could not save the provided URL(s)' });
+  }
+
+  return res.json({ success: true, saved: savedUrls.length, failed: errors.length });
 });
 
-app.get('/remove/:id', async(req, res) => {
-  
-  let id = req.params.id;
-  let tab = await Tab.findByIdAndDelete(id);
+app.get('/remove/:id', async (req, res) => {
+  const { id } = req.params;
+  await Tab.findByIdAndDelete(id);
   res.redirect('/');
+});
 
-});
-app.get('/pin/:id', async(req, res) => {
-    let id = req.params.id;
-    let tab = await Tab.findById(id);
-    tab.pin = !tab.pin;
-    tab.save();
-    res.redirect('/');
-});
-app.get('/removeall', async(req, res) => {
+app.get('/pin/:id', async (req, res) => {
+  const { id } = req.params;
+  const tab = await Tab.findById(id);
 
-await Tab.deleteMany();
-res.redirect('/')
+  if (!tab) {
+    return res.redirect('/');
+  }
+
+  tab.pin = !tab.pin;
+  await tab.save();
+  res.redirect('/');
 });
-app.post('/add', async(req, res) => {
-  
+
+app.get('/removeall', async (req, res) => {
+  await Tab.deleteMany({});
+  res.redirect('/');
+});
+
+app.post('/add', async (req, res) => {
   res.redirect(307, '/urls');
-
 });
 
-app.get('/getextension', async(req, res) => {
+app.get('/getextension', async (req, res) => {
   res.render('extension');
 });

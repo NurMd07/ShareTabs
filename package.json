@@ -1,13 +1,21 @@
 {
-  "name": "urllistener",
-  "version": "1.0.0",
-  "description": "",
+  "name": "sharetabs",
+  "version": "1.1.0",
+  "description": "A clean workspace for sharing tabs and URLs with a browser extension and web dashboard.",
   "main": "app.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node app.js",
+    "dev": "node app.js",
+    "test": "node --check app.js && node --test"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "tabs",
+    "share",
+    "browser",
+    "express",
+    "ejs"
+  ],
+  "author": "ShareTabs",
   "license": "ISC",
   "dependencies": {
     "cheerio": "^1.0.0-rc.12",
